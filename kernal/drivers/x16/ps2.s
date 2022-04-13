@@ -29,8 +29,9 @@ ps2_init:
 	jsr ps2dis
 	dex    ; PB: mouse
 ps2dis:	lda port_ddr,x
-	ora #bit_clk+bit_data
-	sta port_ddr,x ; set CLK and DATA as output
+	ora #bit_clk ; set CLK as output
+	and #$ff - bit_data ; DATA as input
+	sta port_ddr,x
 	lda port_data,x
 	and #$ff - bit_clk ; CLK=0
 	ora #bit_data ; DATA=1
@@ -39,6 +40,9 @@ ps2dis:	lda port_ddr,x
 
 ;****************************************
 ; RECEIVE BYTE
+;  in: X: PS/2 Device
+;           0: Mouse
+;           1: Keyboard
 ; out: A: byte (0 = none)
 ;      Z: byte available
 ;           0: yes
@@ -56,7 +60,8 @@ ps2_receive_byte:
 	ldy #10 * mhz
 :	dey
 	beq lc08c
-	bit port_data,x
+	lda port_data,x
+	and #bit_clk+bit_data
 	bne :- ; wait for CLK=0 and DATA=0 (start bit)
 
 	lda #bit_clk

@@ -15,12 +15,15 @@
 nes_data = d1pra
 nes_ddr  = d1ddra
 
+bit_ps2_kbdat = $01
+bit_ps2_kbclk = $02
 bit_latch = $04 ; PA2 LATCH (both controllers)
 bit_jclk  = $08 ; PA3 CLK   (both controllers)
 bit_data4 = $10 ; PA4 DATA  (controller #4)
 bit_data3 = $20 ; PA5 DATA  (controller #3)
 bit_data2 = $40 ; PA6 DATA  (controller #2)
 bit_data1 = $80 ; PA7 DATA  (controller #1)
+joy_bits  = bit_latch+bit_jclk+bit_data4+bit_data3+bit_data2+bit_data1
 
 .segment "KVARSB0"
 
@@ -42,15 +45,15 @@ joy4:	.res 3           ;    joystick 4 status
 joystick_scan:
 	KVARS_START_TRASH_A_NZ
 
-	lda #$ff-bit_data1-bit_data2
+	lda #$ff-bit_data1-bit_data2-bit_ps2_kbdat
 	sta nes_ddr
 	lda #$00
 	sta nes_data
 
 	; pulse latch
-	lda #bit_latch
+	lda #bit_latch+bit_ps2_kbclk
 	sta nes_data
-	lda #0
+	lda #0+bit_ps2_kbclk
 	sta nes_data
 
 	; read 3x 8 bits
@@ -66,10 +69,10 @@ l1:	lda nes_data
 	rol
 	rol joy4,x
 
-	lda #bit_jclk
+	lda #bit_jclk+bit_ps2_kbclk
 	sta nes_data
 	lda #0
-	sta nes_data
+	sta nes_data+bit_ps2_kbclk
 	dey
 	bne l1
 	inx
@@ -211,13 +214,13 @@ joystick_from_ps2:
 	lda #1 << C_LT
 	cpy #$6b ; LEFT
 	beq @byte0
-:	lda #1 << C_RT
+	lda #1 << C_RT
 	cpy #$74 ; RIGHT
 	beq @byte0
-:	lda #1 << C_UP
+	lda #1 << C_UP
 	cpy #$75 ; UP
 	beq @byte0
-:	lda #1 << C_DN
+	lda #1 << C_DN
 	cpy #$72 ; DOWN
 	bne @end
 @byte0:
