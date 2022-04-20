@@ -136,7 +136,7 @@ KSUP_DEFS = -D CPU_65C02=1  -g -D MACHINE_X16=1 --cpu 65SC02
 
 UT_INCS=$(TESTDIR)/assert.s
 
-all: cx-dc cx-mii cx-sym utest $(BUILD_DIR)/codex.bin
+all: $(BUILD_DIR)/codex.bin cx-dc cx-mii cx-sym utest $(BUILD_DIR)/codex.bin
 
 clean:
 	rm -f *.o *.l *.sym *.map *.bin
