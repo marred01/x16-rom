@@ -69,6 +69,7 @@ This will leave the binaries in the `bin/` subdirectory; you may use thes direct
 Consult the Nesdev Wiki [Installing CC65][nd-cc65] page for some hints, including Windows installs. However, the Debian packages they suggest from [trikaliotis.net] appear to have signature errors.
 
 
+
 Credits
 -------
 
@@ -77,6 +78,35 @@ See [LICENSE.md](LICENSE.md)
 
 Release Notes
 -------------
+
+### Release 41 ("Marrakech")
+
+* KERNAL
+	* keyboard
+		* added 16 more keyboard layouts (28 total)
+		* default layout ("ABC/X16") is now based on Macintosh "ABC - Extended" (full ISO-8859-15, no dead keys)
+		* "keymap" API to activate a built-in keyboard layout
+		* custom keyboard layouts can be loaded from disk (to $0:$A000)
+		* Caps key behaves as expected
+		* support for Shift+AltGr combinations
+		* support for dead keys (e.g. ^ + e = ê)
+		* PgUp/PgDown, End, Menu and Del generate PETSCII codes
+		* Numpad support
+		* Shift+Alt toggles between charsets (like C64)
+		* Editor: "End" will position cursor on last line
+	* VERA source/target support for `memory_fill`, `memory_copy`, `memory_crc`, `memory_decompress` [with PG Lewis]
+	* fixed headerless load for verify/VRAM cases [Mike Ketchen]
+	* don't reset screen colors on mode switch
+* BASIC:
+	* `BLOAD`, `BVLOAD` and `BVERIFY` commands for header-less loading [ZeroByteOrg]
+	* `KEYMAP` command to change keyboard layout
+	* support `DOS8`..`DOS31` (and `A=9:DOSA` etc.) to switch default device
+	* `MOUSE` and `SCREEN` accept -1 as argument (was: $FF)
+	* Changed auto-boot filename from `AUTOBOOT.X16*` to `AUTOBOOT.X16`
+* Monitor:
+	* fixed RMB/SMB disassembly
+* Charset:
+	* X16 logo included in ISO charset, code $AD, Shift+Alt+k in ISO mode
 
 ### Release 40 ("Bonn")
 
@@ -92,6 +122,9 @@ Release Notes
 	* API
 		* keyhandler vector ($032E/$032F) doesn't need to return Z
 		* PLOT API will clear cursor
+* BASIC
+		* on RESET, runs PRG starting with "AUTOBOOT.X16" from device 8 (N.B.: on host fs, name it "AUTOBOOT.X16*" for now!)
+		* BOOT statement with the same function
 * DOS
 	* better detection of volume label
 	* fixed `$=P` (list partitions), `$*=P`/`D` (dir filtering), hidden files

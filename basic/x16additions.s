@@ -97,6 +97,7 @@ coltab	;this is an unavoidable duplicate from KERNAL
 	.byt $90,$05,$1c,$9f,$9c,$1e,$1f,$9e
 	.byt $81,$95,$96,$97,$98,$99,$9a,$9b
 
+;***************
 ; convert byte to binary in zero terminated string and
 ; return it to BASIC
 bind:	jsr chrget ; get char
@@ -137,6 +138,7 @@ bind:	jsr chrget ; get char
 	pla
 	jmp strlitl; allocate and return string value from lofbuf
 
+;***************
 ; convert byte to hex in zero terminated string and
 ; return it to BASIC
 hexd:	jsr chrget ; get char
@@ -223,12 +225,29 @@ vpoke	jsr getbyt ; bank
 	rts
 
 ;***************
-vload	jsr plsv   ;parse the parameters
-	bcc vld1   ;require bank/addr
-	jmp snerr
-vld1	lda andmsk ;bank number
+bvrfy
+	lda #1
+	bra :+
+bload
+	lda #0
+:	pha
+	jsr plsvbin
+	bcc bload2
+	pla
+	bcs :+
+bload2
+	jmp cld8        ; -> load command w/ ram bank switch to chosen bank
+
+vload	jsr plsv        ;parse the parameters
+	bcc vld1        ;require bank/addr
+:	jmp snerr
+
+bvload	jsr plsvbin	;parse, with SA=2 if successful
+	bcs :-
+
+vld1	lda andmsk      ;bank number
 	adc #2
-	jmp cld10  ;jump to load command
+	jmp cld10       ;jump to load command
 
 ;***************
 old	beq old1
@@ -252,7 +271,22 @@ old1	lda txttab+1
 ; ----------------------------------------------------------------
 ;***************
 dos	beq ptstat      ;no argument: print status
-	jsr frmstr      ;length in .a
+	jsr frmevl
+	bit valtyp
+	bmi @str
+; numeric
+	jsr getadr
+	cmp #0          ;lo
+	beq :+
+@fcerr	jmp fcerr
+:	cpy #8           ;hi
+	bcc @fcerr
+	cpy #32
+	bcs @fcerr
+	tya
+	jmp dossw
+
+@str	jsr frefac      ;get ptr to string, length in .a
 	cmp #0
 	beq ptstat      ;no argument: print status
 	sta verck       ;save length
@@ -272,6 +306,7 @@ dos	beq ptstat      ;no argument: print status
 
 ;***************
 ; DOS command
+	sec
 	jsr listen_cmd
 	ldy #0
 :	lda (index1),y
@@ -281,13 +316,24 @@ dos	beq ptstat      ;no argument: print status
 	bne :-
 	jmp unlstn
 
+; in:  C=1 show "DEVICE NOT PRESENT" on error
+;      C=0 return error in C
+; out: C=0 no error
+;      C=1 error
 listen_cmd:
+	php
 	jsr getfa
 	jsr listen
 	lda #$6f
 	jsr second
 	jsr readst
-	bmi device_not_present
+	bmi @error
+	plp
+	clc
+	rts
+@error:	plp
+	bcs device_not_present
+	sec
 	rts
 device_not_present:
 	ldx #5 ; "DEVICE NOT PRESENT"
@@ -301,8 +347,14 @@ clear_disk_status:
 ; print status
 ptstat	sec
 ptstat2	php
+	; keep C:
+	; for printing status, print error
+	; for clearing status, return error
 	jsr listen_cmd
-	jsr unlstn
+	bcc :+
+	plp
+	rts
+:	jsr unlstn
 	jsr getfa
 	jsr talk
 	lda #$6f
@@ -319,8 +371,7 @@ dos11	jsr iecin
 
 ;***************
 ; switch default drive
-dossw	and #$0f
-	sta basic_fa
+dossw	sta basic_fa
 	rts
 
 getfa:
@@ -405,14 +456,25 @@ disk_done
 	sec
 	jmp close
 
+; like getbyt, but negative numbers will become $FF
+getbytneg:
+	jsr frmnum      ;get numeric value into FAC
+	lda facsgn
+	bpl @pos
+	ldx #$ff
+	rts
+@pos:	jmp conint      ;convert to byte
+
+;***************
 mouse:
-	jsr getbyt
+	jsr getbytneg
 	phx
 	sec
 	jsr screen_mode
 	pla
 	jmp mouse_config
 
+;***************
 mx:
 	jsr chrget
 	ldx #fac
@@ -421,6 +483,7 @@ mx:
 	ldy fac
 	jmp givayf0
 
+;***************
 my:
 	jsr chrget
 	ldx #fac
@@ -429,6 +492,7 @@ my:
 	ldy fac+2
 	jmp givayf0
 
+;***************
 mb:
 	jsr chrget
 	ldx #fac
@@ -436,6 +500,7 @@ mb:
 	tay
 	jmp sngflt
 
+;***************
 joy:
 	jsr chrget
 	jsr chkopn ; open paren
@@ -464,6 +529,7 @@ joy:
 
 minus1:	.byte $81, $80, $00, $00, $00
 
+;***************
 reset:
 	ldx #5
 :	lda reset_copy,x
@@ -476,10 +542,12 @@ reset_copy:
 	stz rom_bank
 	jmp ($fffc)
 
+;***************
 cls:
 	lda #$93
 	jmp outch
 
+;***************
 locate:
 	jsr screen
 	stx poker
@@ -516,6 +584,28 @@ locate:
 @error:
 	jmp fcerr
 
+;***************
+ckeymap:
+	jsr frmstr
+	cmp #6
+	bcs @fcerr
+	tay
+	lda #0
+	sta a:lofbuf,y  ;make a copy, so we can
+	dey             ;zero-terminate it
+:	lda (index1),y
+	sta a:lofbuf,y
+	dey
+	bpl :-
+	ldx #<lofbuf
+	ldy #>lofbuf
+	clc
+	jsr keymap
+	bcs @fcerr
+	rts
+@fcerr:	jmp fcerr
+
+;***************
 test:
 	beq @test0
 	jsr getbyt
