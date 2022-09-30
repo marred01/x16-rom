@@ -181,21 +181,21 @@ _mouse_scan:
 	sta mousex+1
 
 	jsr i2c_read_next_byte
-	sta mouseyi
+	sta mouseym
 	jsr i2c_read_stop       ; Stop I2C transfer
 
 ; subtracting because y movement is inverted
 	sec                     ; set carry for subtraction
 	lda mousey
-	sbc mouseyi             ; subtract low byte
+	sbc mouseym             ; subtract low byte
 	sta mousey
 	lda mousebt             ; handle 9th bit
 	and #$20
 	beq :+
 	lda #$ff
-:	sta mouseyi
+:	sta mouseym
 	lda mousey+1
-	sbc mouseyi             ; subtract high byte
+	sbc mouseym             ; subtract high byte
 	sta mousey+1
 
 	lda mousebt
