@@ -26,6 +26,8 @@ mousemy:
 	.res 2           ;    max y coordinate
 mousex:	.res 2           ;    cur x coordinate
 mousey:	.res 2           ;    cur y coordinate
+mouseym:
+	.res 1           ;    mouse y ps/2 movement delta
 mousebt:
 	.res 1           ;    cur buttons (1: left, 2: right, 4: third)
 
@@ -179,27 +181,22 @@ _mouse_scan:
 	sta mousex+1
 
 	jsr i2c_read_next_byte
-	pha                     ; Push low 8 bits onto stack
+	sta mouseyi
 	jsr i2c_read_stop       ; Stop I2C transfer
-	ply                     ; Pop low 8 bits to y
-	lda mousebt             ; Load flags
-	and #$20                ; Check sign bit
-	beq :+                  ; set?
-	lda #$ff                ; sign extend into all of a
-:
-	eor #$ff                ; invert high 8 bits
-	tax                     ; High 8 bits in x
-	tya                     ; Low 8 bits in a
-	eor #$ff                ; invert low 8 bits
-	; At this point x:a = ~dY (not negative dY, bitwise not)
-	sec                     ; Add 1 to low 8 bits
-	adc mousey              ; Add low 8 bits to mousey
-	sta mousey              ; mousey = result
-	txa                     ; High 8 bits in a
-	adc mousey+1            ; Add high 8 bits to mousey+1
-	sta mousey+1            ; mousey+1 = result
 
-
+; subtracting because y movement is inverted
+	sec                     ; set carry for subtraction
+	lda mousey
+	sbc mouseyi             ; subtract low byte
+	sta mousey
+	lda mousebt             ; handle 9th bit
+	and #$20
+	beq :+
+	lda #$ff
+:	sta mouseyi
+	lda mousey+1
+	sbc mouseyi             ; subtract high byte
+	sta mousey+1
 
 	lda mousebt
 	and #7
